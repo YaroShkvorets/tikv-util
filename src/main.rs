@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Deleting {} keys on {}", start, network);
 
     let bar = ProgressBar::new(u64::from_str_radix("ffff", 16).unwrap());
-    bar.set_style(ProgressStyle::with_template("[{eta_precise}] {bar:80.cyan/blue} {pos:>7}/{len:7} {msg}")
+    bar.set_style(ProgressStyle::with_template("[{bar:50.cyan/blue}] {pos:>5}/{len:5} Left: {eta_precise} | {msg}")
         .unwrap()
         .progress_chars("##-"));
 
@@ -33,7 +33,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .await {
                 Ok(keys) => keys,
                 Err(_) => {
-                    // println!("error scanning keys: {:?}", e);
                     errors += 1;
                     continue;
                 }
@@ -47,17 +46,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         start = String::from_utf8_lossy(keys.last().unwrap().into()).into_owned();
         let progress = progress(start.to_string());
         bar.set_position(u64::from_str_radix(progress.as_str(), 16).unwrap());
-        bar.set_message(format!("Deleted: {} | Errors: {} | Current: {}/ffff", deleted, errors, progress));
-        // println!("{} {}", deleted, progress(start.to_string()));
+        bar.set_message(format!("Deleted: {} | Errors: {}\nLast: {}", deleted, errors, start));
     }
 
     println!("Done! Deleted {} keys", deleted);
-
-    // let key = "blob_v1;xc".as_bytes();
-    // match client.get(key.to_owned()).await {
-    //     Ok(_) => println!("xc: {:?}", key),
-    //     Err(e) => println!("error getting key: {:?}", e),
-    // }
 
     Ok(())
 }
