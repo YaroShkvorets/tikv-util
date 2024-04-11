@@ -45,9 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         deleted += keys.len();
         start = String::from_utf8_lossy(keys.last().unwrap().into()).into_owned();
         let progress = progress(start.to_string());
-        if let Ok(prog) = u64::from_str_radix(progress.as_str(), 16) {
-            bar.set_position(prog);
-        }
+        bar.set_position(progress);
         bar.set_message(format!("Deleted: {} | Errors: {}\nLast: {}", deleted, errors, start));
     }
 
@@ -56,12 +54,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn progress(input: String) -> String {
+fn progress(input: String) -> u64 {
     if let Some(index) = input.find("0x") {
         if index + 2 + 4 <= input.len() {
-            return input[index + 2..index + 2 + 4].into();
+            let progress = &input[index + 2..index + 2 + 4];
+            if let Ok(prog) = u64::from_str_radix(progress, 16) {
+                return prog;
+            }
         }
     }
-    "xxxx".into()
+    0
 }
 
