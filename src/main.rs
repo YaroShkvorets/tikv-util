@@ -1,5 +1,6 @@
 use std::env;
 use tikv_client::IntoOwnedRange;
+use indicatif::{ProgressBar, ProgressStyle};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -17,14 +18,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let end = args[3].as_str();
     let client = tikv_client::RawClient::new(vec![format!("{}-pd1.mar.eosn.io:2379", network), format!("{}-pd2.mar.eosn.io:2379", network), format!("{}-pd3.mar.eosn.io:2379", network)]).await?;
 
+    println!("Deleting {} keys on {}", start, network);
+
+    let bar = ProgressBar::new(u64::from_str_radix("ffff", 16).unwrap());
+    bar.set_style(ProgressStyle::with_template("[{eta_precise}] {bar:80.cyan/blue} {pos:>7}/{len:7} {msg}")
+        .unwrap()
+        .progress_chars("##-"));
+
     let mut deleted = 0;
+    let mut errors = 0;
     loop {
         let keys = match client
             .scan_keys((start.as_str()..end).into_owned(), 100)
             .await {
                 Ok(keys) => keys,
-                Err(e) => {
-                    println!("error scanning keys: {:?}", e);
+                Err(_) => {
+                    // println!("error scanning keys: {:?}", e);
+                    errors += 1;
                     continue;
                 }
             };
@@ -35,7 +45,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         deleted += keys.len();
         start = String::from_utf8_lossy(keys.last().unwrap().into()).into_owned();
-        println!("{} {}", deleted, progress(start.to_string()));
+        let progress = progress(start.to_string());
+        bar.set_position(u64::from_str_radix(progress.as_str(), 16).unwrap());
+        bar.set_message(format!("Deleted: {} | Errors: {} | Current: {}/ffff", deleted, errors, progress));
+        // println!("{} {}", deleted, progress(start.to_string()));
     }
 
     println!("Done! Deleted {} keys", deleted);
