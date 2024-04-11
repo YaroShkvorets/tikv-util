@@ -21,7 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Deleting {} keys on {}", start, network);
 
     let bar = ProgressBar::new(u64::from_str_radix("ffff", 16).unwrap());
-    bar.set_style(ProgressStyle::with_template("[{bar:50.cyan/blue}] {pos:>5}/{len:5} Left: {eta_precise} | {msg}")
+    bar.set_style(ProgressStyle::with_template("[{bar:50.cyan/blue}] {pos:>5}/{len:5} Elapsed: {elapsed_precise} | {msg}")
         .unwrap()
         .progress_chars("##-"));
 
@@ -45,7 +45,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         deleted += keys.len();
         start = String::from_utf8_lossy(keys.last().unwrap().into()).into_owned();
         let progress = progress(start.to_string());
-        bar.set_position(u64::from_str_radix(progress.as_str(), 16).unwrap());
+        if let Ok(prog) = u64::from_str_radix(progress.as_str(), 16) {
+            bar.set_position(prog);
+        }
         bar.set_message(format!("Deleted: {} | Errors: {}\nLast: {}", deleted, errors, start));
     }
 
