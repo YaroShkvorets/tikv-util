@@ -27,26 +27,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut deleted = 0;
     let mut errors = 0;
+    let mut last_error = "N/A".to_string();
     loop {
-        let keys = match client
-            .scan_keys((start.as_str()..end).into_owned(), 100)
-            .await {
-                Ok(keys) => keys,
-                Err(_) => {
-                    errors += 1;
-                    continue;
-                }
-            };
+        let keys = match client.scan_keys((start.as_str()..end).into_owned(), 100).await {
+            Ok(keys) => keys,
+            Err(e) => {
+                last_error = e.to_string();
+                errors += 1;
+                continue;
+            }
+        };
         if keys.is_empty() {
             break;
         }
-
+        if let Err(e) = client.batch_delete(keys.clone()).await {
+            last_error = e.to_string();
+            errors += 1;
+            continue;
+        }
 
         deleted += keys.len();
         start = String::from_utf8_lossy(keys.last().unwrap().into()).into_owned();
         let progress = progress(start.to_string());
         bar.set_position(progress);
-        bar.set_message(format!("Deleted: {} | Errors: {}\nLast: {}", deleted, errors, start));
+        bar.set_message(format!("Deleted: {} | Errors: {}\nLast Key: {}\nLast Error: {}", deleted, errors, start, last_error));
     }
 
     println!("Done! Deleted {} keys", deleted);
